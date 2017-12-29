@@ -90,7 +90,7 @@ bool FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize) {
             indirect[i] = freeMap->FindAndSet();
             ASSERT(indirect[i] >= 0);
         }
-        synchdisk->WriteSector(indirectSector, (char *)indirect);
+        kernel->synchdisk->WriteSector(indirectSector, (char *)indirect);
         return true;
     }
 }

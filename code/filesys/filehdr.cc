@@ -71,16 +71,31 @@ FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
 { 
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
-    if (freeMap->NumClear() < numSectors)
-	return FALSE;		// not enough space
 
-    for (int i = 0; i < numSectors; i++) {
-	dataSectors[i] = freeMap->FindAndSet();
-	// since we checked that there was enough free space,
-	// we expect this to succeed
-	ASSERT(dataSectors[i] >= 0);
+    if(numSectors <= NumDirect){
+    	if (freeMap->NumClear() < numSectors)
+			return FALSE;		// not enough space
+    	for (int i = 0; i < numSectors; i++) {
+			dataSectors[i] = freeMap->FindAndSet();
+			ASSERT(dataSectors[i] >= 0);
+		}
+		return true;
+    }else{
+    	if (freeMap->NumClear() < numSectors+1)
+			return FALSE;		// not enough space
+    	for (int i = 0; i < NumDirect; i++) {
+			dataSectors[i] = freeMap->FindAndSet();
+			ASSERT(dataSectors[i] >= 0);
+		}
+	    indirectSector = freeMap->FindAndSet()
+		int indirect[numSectors - NumDirect];
+		for (int i=0; i<numSectors - NumDirect; i++){
+			indirect[i] = freeMap->FindAndSet();
+			ASSERT(indirect[i] >= 0);
+		}
+		synchdisk->WriteSector(indirectSector, (char*)indirect);
+		return true;
     }
-    return TRUE;
 }
 
 //----------------------------------------------------------------------

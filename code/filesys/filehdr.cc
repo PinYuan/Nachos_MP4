@@ -158,7 +158,15 @@ void FileHeader::WriteBack(int sector) {
 //----------------------------------------------------------------------
 
 int FileHeader::ByteToSector(int offset) {
-    return (dataSectors[offset / SectorSize]);
+    int sector = offset / SectorSize;
+    if (sector < NumDirect) // within NumDirect
+        return (dataSectors[sector]);
+    else {
+        sector -= NumDirect;
+        int idx[numSectors - NumDirect];
+        kernel->synchDisk->ReadSector(indirectSector, (char *)(idx));
+        return idx[sector];
+    }
 }
 
 //----------------------------------------------------------------------

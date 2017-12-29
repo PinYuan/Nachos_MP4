@@ -159,6 +159,7 @@ void FileHeader::WriteBack(int sector) {
 
 int FileHeader::ByteToSector(int offset) {
     int sector = offset / SectorSize;
+    
     if (sector < NumDirect) // within NumDirect
         return (dataSectors[sector]);
     else {

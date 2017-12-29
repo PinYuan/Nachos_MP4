@@ -125,7 +125,7 @@ void Disk::WriteRequest(int sectorNumber, char *data) {
     int ticks = ComputeLatency(sectorNumber, TRUE);
 
     ASSERT(!active);
-    std::cout << sectorNumber << '\n';
+    //std::cout << sectorNumber << '\n';
     ASSERT((sectorNumber >= 0) && (sectorNumber < NumSectors));
 
     DEBUG(dbgDisk, "Writing to sector " << sectorNumber);

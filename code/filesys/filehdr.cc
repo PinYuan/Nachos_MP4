@@ -41,6 +41,8 @@ FileHeader::FileHeader() {
     numBytes = -1;
     numSectors = -1;
     memset(dataSectors, -1, sizeof(dataSectors));
+    nextFileHeader = NULL;
+    nextFileHeaderSector = -1;
 }
 
 //----------------------------------------------------------------------
@@ -65,34 +67,41 @@ FileHeader::~FileHeader() {
 //	"fileSize" is the bit map of free disk sectors
 //----------------------------------------------------------------------
 
-bool FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize) {
-    numBytes = fileSize;
-    numSectors = divRoundUp(fileSize, SectorSize);
-
-    if (numSectors <= NumDirect) {
-        if (freeMap->NumClear() < numSectors)
-            return FALSE; // not enough space
-        for (int i = 0; i < numSectors; i++) {
-            dataSectors[i] = freeMap->FindAndSet();
-            ASSERT(dataSectors[i] >= 0);
-        }
-        return true;
-    } else {
-        if (freeMap->NumClear() < numSectors + 1)
-            return FALSE; // not enough space
-        for (int i = 0; i < NumDirect; i++) {
-            dataSectors[i] = freeMap->FindAndSet();
-            ASSERT(dataSectors[i] >= 0);
-        }
-        indirectSector = freeMap->FindAndSet();
-        int indirect[numSectors - NumDirect];
-        for (int i = 0; i < numSectors - NumDirect; i++) {
-            indirect[i] = freeMap->FindAndSet();
-            ASSERT(indirect[i] >= 0);
-        }
-        kernel->synchDisk->WriteSector(indirectSector, (char *)indirect);
-        return true;
+int FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize) {
+	int file_size = (int)(fileSize);
+	int max_file_size = (int)(MaxFileSize);
+    if(file_size > max_file_size){
+        numBytes = max_file_size;
+    }else{
+        numBytes = file_size;
     }
+    
+    numSectors = divRoundUp(numBytes, SectorSize);
+    
+    if(freeMap->NumClear() < numSectors){
+        return 0;
+    }else{
+        for(int i=0; i<numSectors; i++){
+            dataSectors[i] = freeMap->FindAndSet();
+            ASSERT(dataSectors[i] >= 0);
+        
+            // clean sector
+            char clean[SectorSize];   
+            for(int j=0 ; j<SectorSize; j++)   
+                clean[j] = 0;
+            kernel->synchDisk->WriteSector(dataSectors[i], clean);
+        }   
+        cout<<(file_size - max_file_size)<<'\n';
+        if((file_size - max_file_size) > 0){
+			
+            nextFileHeaderSector = freeMap->FindAndSet();   
+            ASSERT(nextFileHeaderSector >= 0);
+            
+            nextFileHeader = new FileHeader;
+            return SectorSize + nextFileHeader->Allocate(freeMap, file_size - max_file_size);           
+        }
+    }
+    return SectorSize; // fileheader size
 }
 
 //----------------------------------------------------------------------
@@ -117,13 +126,28 @@ void FileHeader::Deallocate(PersistentBitmap *freeMap) {
 //----------------------------------------------------------------------
 
 void FileHeader::FetchFrom(int sector) {
-    kernel->synchDisk->ReadSector(sector, (char *)this);
+    //kernel->synchDisk->ReadSector(sector, (char *)this);
 
     /*
             MP4 Hint:
             After you add some in-core informations, you will need to rebuild
        the header's structure
     */
+    char buf[SectorSize];
+    kernel->synchDisk->ReadSector(sector, buf);
+    
+    int offset = sizeof(numBytes);
+    memcpy(&numBytes, buf, sizeof(numBytes));
+    memcpy(&numSectors, buf + offset, sizeof(numSectors));  
+    offset += sizeof(numSectors);
+    memcpy(&nextFileHeaderSector, buf + offset, sizeof(nextFileHeaderSector)); 
+    offset += sizeof(nextFileHeaderSector);
+    memcpy(dataSectors, buf + offset, NumDirect * sizeof(int));
+
+    if(nextFileHeaderSector != -1){
+       nextFileHeader = new FileHeader; 
+       nextFileHeader->FetchFrom(nextFileHeaderSector);
+    }
 }
 
 //----------------------------------------------------------------------
@@ -134,7 +158,7 @@ void FileHeader::FetchFrom(int sector) {
 //----------------------------------------------------------------------
 
 void FileHeader::WriteBack(int sector) {
-    kernel->synchDisk->WriteSector(sector, (char *)this);
+    //kernel->synchDisk->WriteSector(sector, (char *)this);
 
     /*
             MP4 Hint:
@@ -145,6 +169,21 @@ void FileHeader::WriteBack(int sector) {
             memcpy(buf + offset, &dataToBeWritten, sizeof(dataToBeWritten));
             ...
     */
+    char buf[SectorSize];
+    int offset = sizeof(numBytes);
+    
+    // numBytes, numSectors, nextFileHeaderSector, dataSector    
+    memcpy(buf , &numBytes, sizeof(numBytes));
+    memcpy(buf + offset, &numSectors, sizeof(numSectors)); 
+    offset += sizeof(numSectors);
+    memcpy(buf + offset, &nextFileHeaderSector, sizeof(nextFileHeaderSector)); 
+    offset += sizeof(nextFileHeaderSector);
+    memcpy(buf + offset, dataSectors, NumDirect*sizeof(int));
+    kernel->synchDisk->WriteSector(sector, buf);
+
+    if(nextFileHeaderSector != -1){
+        nextFileHeader->WriteBack(nextFileHeaderSector);
+    }
 }
 
 //----------------------------------------------------------------------
@@ -157,16 +196,12 @@ void FileHeader::WriteBack(int sector) {
 //	"offset" is the location within the file of the byte in question
 //----------------------------------------------------------------------
 
-int FileHeader::ByteToSector(int offset) {
-    int sector = offset / SectorSize;
-    
+int FileHeader::ByteToSector(int offset) { 
+   int sector = offset / SectorSize;
     if (sector < NumDirect) // within NumDirect
         return (dataSectors[sector]);
     else {
-        sector -= NumDirect;
-        int idx[numSectors - NumDirect];
-        kernel->synchDisk->ReadSector(indirectSector, (char *)(idx));
-        return idx[sector];
+        return nextFileHeader->ByteToSector(offset - (int)MaxFileSize);
     }
 }
 
@@ -175,7 +210,14 @@ int FileHeader::ByteToSector(int offset) {
 // 	Return the number of bytes in the file.
 //----------------------------------------------------------------------
 
-int FileHeader::FileLength() { return numBytes; }
+int FileHeader::FileLength() { 
+    int totalNumBytes = numBytes;
+    
+    if(nextFileHeader != NULL){
+        totalNumBytes += nextFileHeader->FileLength();
+    }
+    return totalNumBytes;
+}
 
 //----------------------------------------------------------------------
 // FileHeader::Print
@@ -208,5 +250,7 @@ void FileHeader::Print() {
         }
         printf("\n");
     }
+    
+    if(nextFileHeader != NULL) nextFileHeader->Print();
     delete[] data;
 }

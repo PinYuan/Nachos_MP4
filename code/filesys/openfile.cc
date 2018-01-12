@@ -103,7 +103,9 @@ int OpenFile::Write(char *into, int numBytes) {
 int OpenFile::ReadAt(char *into, int numBytes, int position) {
     int fileLength = hdr->FileLength();
     int i, firstSector, lastSector, numSectors;
-    char *buf;
+    char *buf; 
+
+    //cout << "file length: " << fileLength << endl;
 
     if ((numBytes <= 0) || (position >= fileLength))
         return 0; // check request
@@ -114,6 +116,7 @@ int OpenFile::ReadAt(char *into, int numBytes, int position) {
 
     firstSector = divRoundDown(position, SectorSize);
     lastSector = divRoundDown(position + numBytes - 1, SectorSize);
+//	cout << "ReadAt " << firstSector << ' ' << lastSector << '\n';
     numSectors = 1 + lastSector - firstSector;
 
     // read in all the full and partial sectors that we need

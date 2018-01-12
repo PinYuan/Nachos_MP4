@@ -42,7 +42,7 @@ class FileHeader {
     FileHeader(); // dummy constructor to keep valgrind happy
     ~FileHeader();
 
-    bool Allocate(PersistentBitmap *bitMap,
+    int Allocate(PersistentBitmap *bitMap,
                   int fileSize);               // Initialize a file header,
                                                //  including allocating space
                                                //  on disk for the file data
@@ -86,7 +86,8 @@ class FileHeader {
     int numSectors;             // Number of data sectors in the file
     int dataSectors[NumDirect]; // Disk sector numbers for each data
                                 // block in the file
-    int indirectSector;
+    int nextFileHeaderSector;
+    FileHeader* nextFileHeader; 
 };
 
 #endif // FILEHDR_H

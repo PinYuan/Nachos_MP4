@@ -84,6 +84,7 @@ FileSystem::FileSystem(bool format) {
     DEBUG(dbgFile, "Initializing the file system.");
     if (format) {
         PersistentBitmap *freeMap = new PersistentBitmap(NumSectors);
+		
         Directory *directory = new Directory(NumDirEntries);
         FileHeader *mapHdr = new FileHeader;
         FileHeader *dirHdr = new FileHeader;
@@ -93,12 +94,14 @@ FileSystem::FileSystem(bool format) {
         // First, allocate space for FileHeaders for the directory and bitmap
         // (make sure no one else grabs these!)
         freeMap->Mark(FreeMapSector);
+		//cout<<"m1 "<<freeMap->NumClear()<<'\n';
         freeMap->Mark(DirectorySector);
-
+		//cout<<"m2 "<<freeMap->NumClear()<<'\n';
         // Second, allocate space for the data blocks containing the contents
         // of the directory and bitmap files.  There better be enough space!
 
         ASSERT(mapHdr->Allocate(freeMap, FreeMapFileSize));
+		//cout<<"map"<<freeMap->NumClear()<<'\n';
         ASSERT(dirHdr->Allocate(freeMap, DirectoryFileSize));
 
         // Flush the bitmap and directory FileHeaders back to disk

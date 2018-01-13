@@ -17,6 +17,8 @@
 #include "synchdisk.h"
 #include "post.h"
 #include "synchconsole.h"
+#include "filesys.h"
+#include "openfile.h"
 
 //----------------------------------------------------------------------
 // Kernel::Kernel
@@ -323,14 +325,49 @@ int Kernel::CreateFile(char *filename, int initialSize) {
 }
 #endif
 
-OpenFileId Kernel::Open(char *filename) { return fileSystem->_Open(filename); }
+OpenFileId Kernel::Open(char *filename) { 
+    OpenFile* openfile = fileSystem->Open(filename); 
+    if(openfile == NULL) return -1; // open fail   
+
+    for(int ID=1; ID<=MAXFILENUM; ID++){
+        if(fileSystem->fileDescriptorTable[ID] == NULL){
+            fileSystem->fileDescriptorTable[ID] = openfile;
+            fileSystem->openedNum++;
+            return ID;
+        }
+    }
+    return -1; // fileDescriptorTable no space
+}
 
 int Kernel::Write(char *msg, int _size, OpenFileId id) {
-    return fileSystem->Write(msg, _size, id);
+    if((id >=0 && id <= MAXFILENUM) == FALSE)
+        return -1;
+ 
+    OpenFile* openfile = fileSystem->fileDescriptorTable[id];
+    if(openfile == NULL)
+        return -1; 
+    return openfile->Write(msg, _size);
 }
 
 int Kernel::Read(char *msg, int _size, int id) {
-    return fileSystem->Read(msg, _size, id);
+    if((id >=0 && id <= MAXFILENUM) == FALSE)
+        return -1;
+    
+    OpenFile* openfile = fileSystem->fileDescriptorTable[id];
+    if(openfile == NULL)
+        return -1; 
+    return openfile->Read(msg, _size);
 }
 
-int Kernel::Close(OpenFileId id) { return fileSystem->_Close(id); }
+int Kernel::Close(OpenFileId id) { 
+    if((id >=0 && id <= MAXFILENUM) == FALSE)
+        return -1;  
+    
+    OpenFile* openfile = fileSystem->fileDescriptorTable[id];
+    if(openfile == NULL)
+        return -1; 
+    fileSystem->fileDescriptorTable[id] = NULL;
+    fileSystem->openedNum--;
+    delete openfile;
+    return 1;
+}

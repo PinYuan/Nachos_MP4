@@ -39,6 +39,21 @@
 #include "syscall.h"
 #include "debug.h"
 
+#define MAXFILENUM 400
+
+// Sectors containing the file headers for the bitmap of free sectors,
+// and the directory of files.  These file headers are placed in well-known
+// sectors, so that they can be located on boot-up.
+#define FreeMapSector 0
+#define DirectorySector 1
+
+// Initial file sizes for the bitmap and directory; until the file system
+// supports extensible files, the directory size sets the maximum number
+// of files that can be loaded onto the disk.
+#define FreeMapFileSize (NumSectors / BitsInByte)
+#define NumDirEntries 64 // Support up to 64 files/subdirectories per directory
+#define DirectoryFileSize (sizeof(DirectoryEntry) * NumDirEntries)
+
 #ifdef FILESYS_STUB // Temporarily implement file system calls as
 // calls to UNIX, until the real file system
 // implementation is available
@@ -72,6 +87,7 @@ class FileSystem {
 };
 
 #else // FILESYS
+
 class FileSystem {
   public:
     FileSystem(bool format); // Initialize the file system.
@@ -83,18 +99,20 @@ class FileSystem {
     // MP4 mod tag
     ~FileSystem();
 
-    bool Create(char *name, int initialSize);
+    bool Create(char *path, int initialSize);
     // Create a file (UNIX creat)
 
-    OpenFile* Open(char *name); // Open a file (UNIX open)
+    OpenFile* Open(char *path); // Open a file (UNIX open)
 
-    bool Remove(char *name); // Delete a file (UNIX unlink)
+    bool Remove(char *path); // Delete a file (UNIX unlink)
 
-    void List(); // List all the files in the file system
+    void List(bool recursion, char* dirPath); // List all the files in the file system
 
     void Print(); // List all the files and their contents
 
-    OpenFileId _Open(char *name) {
+    OpenFile* FindSubDir(char* subDirPath); // Find the sub directory's openfile
+
+    /*OpenFileId _Open(char *name) {
         int fileDescriptorID = 1;
         while (fileDescriptorID < 30 &&
                fileDescriptorTable[fileDescriptorID] != NULL) {
@@ -118,8 +136,9 @@ class FileSystem {
         delete (file);
         fileDescriptorTable[id] = NULL;
         return 1;
-    }
-    OpenFile *fileDescriptorTable[30+1];
+    }*/
+    OpenFile* fileDescriptorTable[MAXFILENUM]; // fileID and openfile* map
+    int openedNum; // how many file be opended
 
   private:
     OpenFile *freeMapFile;   // Bit map of free disk blocks,

@@ -23,6 +23,7 @@
 #include "utility.h"
 #include "filehdr.h"
 #include "directory.h"
+#include "filesys.h"
 
 //----------------------------------------------------------------------
 // Directory::Directory
@@ -124,6 +125,7 @@ bool Directory::Add(char *name, int newSector) {
 
     for (int i = 0; i < tableSize; i++)
         if (!table[i].inUse) {
+            table[i].isDir = FALSE; /* MP4 */
             table[i].inUse = TRUE;
             strncpy(table[i].name, name, FileNameMaxLen);
             table[i].sector = newSector;
@@ -131,6 +133,23 @@ bool Directory::Add(char *name, int newSector) {
         }
     return FALSE; // no space.  Fix when we have extensible files.
 }
+
+/* MP4 */
+bool Directory::Add(char *name, int newSector, bool isDir){
+    if (FindIndex(name) != -1)
+        return FALSE;
+
+    for (int i = 0; i < tableSize; i++)
+        if (!table[i].inUse) {
+            table[i].isDir = (isDir == TRUE)?TRUE: FALSE;
+            table[i].inUse = TRUE;
+            strncpy(table[i].name, name, FileNameMaxLen);
+            table[i].sector = newSector;
+            return TRUE;
+        }
+    return FALSE; // no space.  Fix when we have extensible files. 
+}
+
 
 //----------------------------------------------------------------------
 // Directory::Remove
@@ -154,10 +173,34 @@ bool Directory::Remove(char *name) {
 // 	List all the file names in the directory.
 //----------------------------------------------------------------------
 
-void Directory::List() {
-    for (int i = 0; i < tableSize; i++)
-        if (table[i].inUse)
-            printf("%s\n", table[i].name);
+void Directory::List(bool recursion, int depth) {
+    int indexFile = 0;
+
+    for(int i=0; i<tableSize; i++){
+        if(table[i].inUse == TRUE){
+            for(int j=0; j<depth; j++)
+                cout << "\t";
+            
+            cout << "[" << indexFile++ << "] " << table[i].name << " ";
+            if(table[i].isDir){
+                cout << "D\n";
+                if(recursion){
+                    // fetch subdirectory from disk
+                    Directory* subDir = new Directory(NumDirEntries);
+                    OpenFile* subDirFile = new OpenFile(table[i].sector);
+                    subDir->FetchFrom(subDirFile);
+                    
+                    // recursion list directory
+                    subDir->List(recursion, depth+1);
+                    
+                    delete subDir;
+                    delete subDirFile;   
+                }
+            }else{
+                cout << "F\n";
+            }  
+        }
+    }
 }
 
 //----------------------------------------------------------------------

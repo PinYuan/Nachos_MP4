@@ -31,6 +31,7 @@
 
 class DirectoryEntry {
   public:
+    bool isDir;                    // Is this entry is directory
     bool inUse;                    // Is this directory entry in use?
     int sector;                    // Location on disk to find the
                                    //   FileHeader for this file
@@ -62,10 +63,12 @@ class Directory {
                           // FileHeader for file: "name"
 
     bool Add(char *name, int newSector); // Add a file name into the directory
+    /* MP4 */
+    bool Add(char *name, int newSector, bool isDir); // Add a subdir file into the directory
 
     bool Remove(char *name); // Remove a file from the directory
 
-    void List();  // Print the names of all the files
+    void List(bool recursion, int depth);  // Print the names of all the files
                   //  in the directory
     void Print(); // Verbose print of the contents
                   //  of the directory -- all the file

@@ -53,7 +53,8 @@ FileHeader::FileHeader() {
 //	Always remember to deallocate their space or you will leak memory
 //----------------------------------------------------------------------
 FileHeader::~FileHeader() {
-    // nothing to do now
+    if(nextFileHeader != NULL)
+        delete nextFileHeader;
 }
 
 //----------------------------------------------------------------------
@@ -91,7 +92,6 @@ int FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize) {
                 clean[j] = 0;
             kernel->synchDisk->WriteSector(dataSectors[i], clean);
         }   
-        cout<<(file_size - max_file_size)<<'\n';
         if((file_size - max_file_size) > 0){
 			
             nextFileHeaderSector = freeMap->FindAndSet();   
@@ -111,11 +111,13 @@ int FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize) {
 //	"freeMap" is the bit map of free disk sectors
 //----------------------------------------------------------------------
 
-void FileHeader::Deallocate(PersistentBitmap *freeMap) {
+void FileHeader::Deallocate(PersistentBitmap *freeMap) {  
     for (int i = 0; i < numSectors; i++) {
         ASSERT(freeMap->Test((int)dataSectors[i])); // ought to be marked!
         freeMap->Clear((int)dataSectors[i]);
     }
+    if(nextFileHeader != NULL)
+        nextFileHeader->Deallocate(freeMap);    
 }
 
 //----------------------------------------------------------------------

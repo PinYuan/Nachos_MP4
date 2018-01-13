@@ -321,8 +321,9 @@ main(int argc, char **argv)
 		kernel->fileSystem->Print();
     }
     if (dirListFlag) {
-		kernel->fileSystem->List();
+		kernel->fileSystem->List(recursiveListFlag, listDirectoryName); /* MP4 */ 
     }
+    
 	if (mkdirFlag) {
 		// MP4 mod tag
 		CreateDirectory(createDirectoryName);

@@ -72,8 +72,13 @@ class Directory {
                   //  in the directory
     void Print(); // Verbose print of the contents
                   //  of the directory -- all the file
-                  //  names and their contents.
 
+                  //  names and their contents.
+    /* MP4 */
+    bool IsDir(char *name);
+	int tableSize;         // Number of directory entries
+    DirectoryEntry *table; // Table of pairs:
+                           // <file name, file header location>
   private:
     /*
             MP4 Hint:
@@ -83,9 +88,7 @@ class Directory {
             In-core part: tableSize
     */
 
-    int tableSize;         // Number of directory entries
-    DirectoryEntry *table; // Table of pairs:
-                           // <file name, file header location>
+    
 
     int FindIndex(char *name); // Find the index into the directory
                                //  table corresponding to "name"

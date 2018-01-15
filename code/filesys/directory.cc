@@ -168,20 +168,19 @@ bool Directory::Remove(char *name) {
     return TRUE;
 }
 
+
 //----------------------------------------------------------------------
 // Directory::List
 // 	List all the file names in the directory.
 //----------------------------------------------------------------------
 
 void Directory::List(bool recursion, int depth) {
-    int indexFile = 0;
-
     for(int i=0; i<tableSize; i++){
         if(table[i].inUse == TRUE){
             for(int j=0; j<depth; j++)
                 cout << "\t";
             
-            cout << "[" << indexFile++ << "] " << table[i].name << " ";
+            cout << "[" << i << "] " << table[i].name << " ";
             if(table[i].isDir){
                 cout << "D\n";
                 if(recursion){
@@ -221,4 +220,10 @@ void Directory::Print() {
         }
     printf("\n");
     delete hdr;
+}
+
+/* MP4 */
+bool Directory::IsDir(char* name){
+    int index = FindIndex(name);
+    return table[index].isDir;
 }

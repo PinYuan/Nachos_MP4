@@ -105,7 +105,9 @@ AddrSpace::~AddrSpace()
 bool 
 AddrSpace::Load(char *fileName) 
 {
-    OpenFile *executable = kernel->fileSystem->Open(fileName);
+	pair<OpenFile*,OpenFileId> openFileInfo = kernel->fileSystem->Open(fileName);
+    OpenFile *executable = openFileInfo.first;
+	
     NoffHeader noffH;
     unsigned int size;
 
@@ -168,7 +170,7 @@ AddrSpace::Load(char *fileName)
 			noffH.readonlyData.size, noffH.readonlyData.inFileAddr);
     }
 #endif
-
+	//delete openFileInfo;
     delete executable;			// close file
     return TRUE;			// success
 }

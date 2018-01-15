@@ -98,23 +98,29 @@ Copy(char *from, char *to)
 
 // Create a Nachos file of the same length
     DEBUG('f', "Copying file " << from << " of size " << fileLength <<  " to file " << to);
-    if (!kernel->fileSystem->Create(to, fileLength)) {   // Create Nachos file
+    if (!kernel->fileSystem->Create(to, fileLength, FALSE)) {   // Create Nachos file
         printf("Copy: couldn't create output file %s\n", to);
         Close(fd);
         return;
     }
-    
-    openFile = kernel->fileSystem->Open(to);
-    ASSERT(openFile != NULL);
-    
+    pair<OpenFile*,OpenFileId> openFileInfo = kernel->fileSystem->Open(to);
+    openFile = openFileInfo.first;
+    ASSERT(openFile != NULL);   
+	
 // Copy the data in TransferSize chunks
     buffer = new char[TransferSize];
     while ((amountRead=ReadPartial(fd, buffer, sizeof(char)*TransferSize)) > 0)
         openFile->Write(buffer, amountRead);    
     delete [] buffer;
-
+	
 // Close the UNIX and the Nachos files
+	//delete openFileInfo;
+	cout<<"Close"<<'\n';
     delete openFile;
+	kernel->fileSystem->fileDescriptorTable[openFileInfo.second] = NULL;
+	kernel->fileSystem->openedNum--;
+	cout << "openedNum = " << kernel->fileSystem->openedNum << '\n';
+	
     Close(fd);
 }
 
@@ -131,8 +137,11 @@ Print(char *name)
     OpenFile *openFile;    
     int i, amountRead;
     char *buffer;
-
-    if ((openFile = kernel->fileSystem->Open(name)) == NULL) {
+	pair<OpenFile*,OpenFileId> openFileInfo = kernel->fileSystem->Open(name);
+	openFile = openFileInfo.first;
+	ASSERT(openFile != NULL);
+	
+    if (openFile == NULL) {
         printf("Print: unable to open file %s\n", name);
         return;
     }
@@ -142,8 +151,13 @@ Print(char *name)
         for (i = 0; i < amountRead; i++)
             printf("%c", buffer[i]);
     delete [] buffer;
-
-    delete openFile;            // close the Nachos file
+	//delete openFileInfo;
+	cout<<"Close"<<'\n';
+	delete openFile;
+	kernel->fileSystem->fileDescriptorTable[openFileInfo.second] = NULL;
+	kernel->fileSystem->openedNum--;
+	cout << "openedNum = " << kernel->fileSystem->openedNum << '\n';
+	
     return;
 }
 
@@ -155,7 +169,8 @@ Print(char *name)
 static void
 CreateDirectory(char *name)
 {
-	// MP4 Assignment
+    if(kernel->fileSystem->Create(name, 0, TRUE) == FALSE)
+        cout << "Create: unable to create directory " << name << "\n";    
 }
 
 //----------------------------------------------------------------------
@@ -272,9 +287,7 @@ main(int argc, char **argv)
 	else if (strcmp(argv[i], "-D") == 0) {
 	    dumpFlag = true;
 	}
-	else if (strcmp(argv[i], "-f") == 0) {//TODO
-	    //cout << "hello\n";
-	}
+
 #endif //FILESYS_STUB
 	else if (strcmp(argv[i], "-u") == 0) {
             cout << "Partial usage: nachos [-z -d debugFlags]\n";
@@ -312,7 +325,7 @@ main(int argc, char **argv)
 
 #ifndef FILESYS_STUB
     if (removeFileName != NULL) {
-		kernel->fileSystem->Remove(removeFileName);
+		kernel->fileSystem->Remove(recursiveRemoveFlag,removeFileName);
     }
     if (copyUnixFileName != NULL && copyNachosFileName != NULL) {
 		Copy(copyUnixFileName,copyNachosFileName);

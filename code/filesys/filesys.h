@@ -99,12 +99,12 @@ class FileSystem {
     // MP4 mod tag
     ~FileSystem();
 
-    bool Create(char *path, int initialSize);
+    bool Create(char *path, int initialSize, bool isDir); /* MP4 */
     // Create a file (UNIX creat)
 
-    OpenFile* Open(char *path); // Open a file (UNIX open)
+    std::pair<OpenFile*,OpenFileId> Open(char *path); // Open a file (UNIX open)
 
-    bool Remove(char *path); // Delete a file (UNIX unlink)
+    bool Remove(bool recursion, char *path); // Delete a file (UNIX unlink)
 
     void List(bool recursion, char* dirPath); // List all the files in the file system
 
@@ -112,31 +112,6 @@ class FileSystem {
 
     OpenFile* FindSubDir(char* subDirPath); // Find the sub directory's openfile
 
-    /*OpenFileId _Open(char *name) {
-        int fileDescriptorID = 1;
-        while (fileDescriptorID < 30 &&
-               fileDescriptorTable[fileDescriptorID] != NULL) {
-            fileDescriptorID++;
-        }
-        // check if there are more than 30 files or not
-        ASSERT(fileDescriptorID <= 30);
-        fileDescriptorTable[fileDescriptorID] = Open(name);
-        return fileDescriptorID;
-    }
-    int Write(char *buffer, int size, int id) {
-        return fileDescriptorTable[id]->Write(buffer, size);
-    }
-    int Read(char *buffer, int size, int id) {
-        return fileDescriptorTable[id]->Read(buffer, size);
-    }
-    int _Close(int id) {
-        OpenFile *file = fileDescriptorTable[id];
-        if (file == NULL)
-            return 0;
-        delete (file);
-        fileDescriptorTable[id] = NULL;
-        return 1;
-    }*/
     OpenFile* fileDescriptorTable[MAXFILENUM]; // fileID and openfile* map
     int openedNum; // how many file be opended
 

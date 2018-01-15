@@ -321,26 +321,18 @@ int Kernel::Exec(char *name) {
 int Kernel::CreateFile(char *filename) { return fileSystem->Create(filename); }
 #else
 int Kernel::CreateFile(char *filename, int initialSize) {
-    return fileSystem->Create(filename, initialSize);
+    return fileSystem->Create(filename, initialSize, FALSE);
 }
 #endif
 
 OpenFileId Kernel::Open(char *filename) { 
-    OpenFile* openfile = fileSystem->Open(filename); 
-    if(openfile == NULL) return -1; // open fail   
-
-    for(int ID=1; ID<=MAXFILENUM; ID++){
-        if(fileSystem->fileDescriptorTable[ID] == NULL){
-            fileSystem->fileDescriptorTable[ID] = openfile;
-            fileSystem->openedNum++;
-            return ID;
-        }
-    }
-    return -1; // fileDescriptorTable no space
+	pair<OpenFile*,OpenFileId> openFileInfo = fileSystem->Open(filename); 
+	OpenFileId ID = openFileInfo.second;
+    return ID;
 }
 
 int Kernel::Write(char *msg, int _size, OpenFileId id) {
-    if((id >=0 && id <= MAXFILENUM) == FALSE)
+    if((id >=1 && id <= MAXFILENUM) == FALSE)
         return -1;
  
     OpenFile* openfile = fileSystem->fileDescriptorTable[id];
@@ -350,7 +342,7 @@ int Kernel::Write(char *msg, int _size, OpenFileId id) {
 }
 
 int Kernel::Read(char *msg, int _size, int id) {
-    if((id >=0 && id <= MAXFILENUM) == FALSE)
+    if((id >=1 && id <= MAXFILENUM) == FALSE)
         return -1;
     
     OpenFile* openfile = fileSystem->fileDescriptorTable[id];
@@ -360,7 +352,8 @@ int Kernel::Read(char *msg, int _size, int id) {
 }
 
 int Kernel::Close(OpenFileId id) { 
-    if((id >=0 && id <= MAXFILENUM) == FALSE)
+	cout<<"Kernel Close"<<'\n';
+    if((id >=1 && id <= MAXFILENUM) == FALSE)
         return -1;  
     
     OpenFile* openfile = fileSystem->fileDescriptorTable[id];
@@ -368,6 +361,7 @@ int Kernel::Close(OpenFileId id) {
         return -1; 
     fileSystem->fileDescriptorTable[id] = NULL;
     fileSystem->openedNum--;
+	cout << "openedNum = " << fileSystem->openedNum << '\n';
     delete openfile;
     return 1;
 }
